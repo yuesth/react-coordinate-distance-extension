@@ -11,7 +11,7 @@
     "target": "esnext",
     "types": ["chrome"],
     // For nodejs:
-    "lib": ["esnext"],
+    "lib": ["esnext", "DOM", "DOM.Iterable"],
     // "types": ["node"],
     // and npm install -D @types/node
 
@@ -41,10 +41,11 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "declarations.d.ts"
   ],
   "exclude": [
     "node_modules",

@@ -1,8 +1,7 @@
-import {createRoot} from 'react-dom/client'
-import App from './components/App';
-import type { ReactNode } from 'react';
+import { createRoot } from "react-dom/client";
+import App from "./components/App";
+import React from "react";
+import "../styles/tailwind.css";
 
-const root = createRoot(document.getElementById('root') as any);
-root.render(
-    <App /> as any
-);
+const root = createRoot(document.getElementById("root") as HTMLElement);
+root.render((<App />));
