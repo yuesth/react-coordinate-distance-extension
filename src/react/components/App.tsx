@@ -1,28 +1,219 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import IconVersus from "../icons/IconVersus";
+import IconX from "../icons/IconX";
+import IconCalculator from "../icons/IconCalculator";
+import { getDistance } from "geolib";
+import IconBack from "../icons/IconBack";
+import { storage } from "../utils/storage";
 
 const App = () => {
+  const [isMultiple, setIsMultiple] = useState<boolean | null>(null);
+  const [coordinates, setCoordinates] = useState<string[]>([]);
+  const [isCalculated, setIsCalculated] = useState<boolean>(false);
+  const [singleDistance, setSingleDistance] = useState<number | null>(null);
+
+  const handleSingleCoordinatesChange = async () => {
+    console.log("Single Coordinates:", coordinates);
+    if (coordinates.length > 1) {
+      const firstCoordinate = coordinates[0]?.split(",");
+      const secondCoordinate = coordinates[1]?.split(",");
+      if (!firstCoordinate || !secondCoordinate) return;
+      setIsCalculated(true);
+      await storage.set("isCalculated", true);
+      const distance = getDistance(
+        {
+          latitude: parseFloat(firstCoordinate?.[0] || "0"),
+          longitude: parseFloat(firstCoordinate?.[1] || "0"),
+        },
+        {
+          latitude: parseFloat(secondCoordinate?.[0] || "0"),
+          longitude: parseFloat(secondCoordinate?.[1] || "0"),
+        }
+      );
+      await storage.set("singleDistance", distance || 0);
+      setSingleDistance(distance || 0);
+    }
+  };
+
+  useEffect(() => {
+    const handleFocus = async () => {
+      console.log("Popup focused, refreshing data");
+      const iscal = await storage.get<boolean>("isCalculated");
+      const ismul = await storage.get<boolean | string | null>("isMultiple");
+      const singleDist = await storage.get("singleDistance");
+      const coor = await storage.get("coordinates");
+      console.log(
+        "is schema",
+        iscal,
+        ismul,
+        singleDist,
+        coor,
+        typeof iscal,
+        typeof ismul,
+        typeof singleDist,
+        typeof coor
+      );
+      setIsCalculated((iscal || false) as boolean);
+      setSingleDistance(parseFloat(singleDist as any));
+      setIsMultiple(
+        ismul === "null" || isMultiple === null ? null : (ismul as boolean)
+      );
+      setCoordinates(coor === null ? [] : JSON.parse(coor as string));
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
+
   return (
-    <div className="bg-blue-500 text-white p-4 rounded-lg w-40 h-40 flex flex-col items-center justify-center">
-      <h1 className="text-2xl font-bold">Hello Tailwind!</h1>
-      <p className="mt-2">This is your Chrome extension with Tailwind CSS</p>
-      <button className="bg-white text-blue-500 px-4 py-2 rounded mt-4 hover:bg-gray-100">
-        Click me
-      </button>
+    <div className="bg-gradient-to-tr from-green-200 to-green-600 w-[360px] min-h-72 max-h-[90vh] p-6 flex flex-col text-black overflow-scroll">
+      <div className="flex items-center justify-center relative mb-6">
+        {isMultiple !== null && (
+          <div className="absolute left-0 inset-y-0 flex items-center justify-center">
+            <button
+              onClick={async () => {
+                await storage.set("isMultiple", `${null}`);
+                setIsMultiple(null);
+              }}
+              className="hover:opacity-50 transition"
+            >
+              <IconBack size={20} className="fill-white" />
+            </button>
+          </div>
+        )}
+        <h1 className="text-base font-bold text-center">
+          Coordinates Calculator
+        </h1>
+      </div>
+      {isMultiple === null ? (
+        <div className="flex items-center justify-center w-full space-x-3">
+          <button
+            className="bg-white px-4 py-2 rounded-lg flex items-center justify-center font-semibold text-black hover:opacity-80 transition"
+            onClick={async () => {
+              await storage.set("isMultiple", false);
+              setIsMultiple(false);
+            }}
+          >
+            Single Coordinate
+          </button>
+          <button
+            className="bg-green-500 px-4 py-2 rounded-lg flex items-center justify-center font-semibold text-white hover:opacity-80 transition"
+            onClick={async () => {
+              await storage.set("isMultiple", true);
+              setIsMultiple(true);
+            }}
+          >
+            Multi Coordinate
+          </button>
+        </div>
+      ) : isMultiple === true ? (
+        <></>
+      ) : (
+        <div className="flex flex-col items-start">
+          <div className="flex flex-col space-y-4 w-full">
+            <div className="flex flex-col space-y-1 w-full">
+              <p className="text-sm font-medium">Coordinate 1 (Lat,Long)</p>
+              <input
+                type="text"
+                value={coordinates[0]}
+                onChange={(e) => {
+                  const temp = [...coordinates];
+                  temp[0] = e.target.value;
+                  setCoordinates(temp);
+                }}
+                onBlur={async (e) => {
+                  const temp = [...coordinates];
+                  temp[0] = e.target.value;
+                  await storage.set("coordinates", JSON.stringify(temp));
+                }}
+                placeholder="e.g. 37.7749,-122.4194"
+                className="form-input rounded-md w-full text-black placeholder:text-xs"
+              />
+            </div>
+            <div className="flex items-center justify-center">
+              <IconVersus size={28} className="fill-white" />
+            </div>
+            <div className="flex flex-col space-y-1 w-full -mt-3">
+              <p className="text-sm font-medium">Coordinate 2 (Lat,Long)</p>
+              <input
+                type="text"
+                value={coordinates[1]}
+                onChange={(e) => {
+                  const temp = [...coordinates];
+                  temp[1] = e.target.value;
+                  setCoordinates(temp);
+                }}
+                onBlur={async (e) => {
+                  const temp = [...coordinates];
+                  temp[1] = e.target.value;
+                  await storage.set("coordinates", JSON.stringify(temp));
+                }}
+                placeholder="e.g. 37.7749,-122.4194"
+                className="form-input rounded-md w-full text-black placeholder:text-xs"
+              />
+            </div>
+            {!isCalculated && !singleDistance ? (
+              <div className="w-full">
+                <button
+                  onClick={() => handleSingleCoordinatesChange()}
+                  className="bg-green-700/70 w-full mt-3 font-bold text px-4 py-2 rounded-xl flex items-center justify-center space-x-2 text-white hover:opacity-80 transition"
+                >
+                  <IconCalculator size={28} className="stroke-white" />
+                  Calculate
+                </button>
+              </div>
+            ) : (
+              <div className="w-full">
+                {(singleDistance || 0) < 50 ? (
+                  <div className="bg-green-400 rounded-md p-4 pt-6 mt-3 w-full flex items-center justify-center relative">
+                    <IconX
+                      size={20}
+                      className="absolute top-2 right-2 cursor-pointer hover:opacity-70 transition fill-white"
+                      onClick={async () => {
+                        setIsCalculated(false);
+                        setSingleDistance(null);
+                        setCoordinates([]);
+                        await storage.set("isCalculated", false);
+                        await storage.set("singleDistance", `${null}`);
+                      }}
+                    />
+                    <p className="text-white text-sm">
+                      Distance is between these coordinates is approximately{" "}
+                      <span className="font-semibold text-green-800">
+                        {singleDistance}
+                      </span>
+                      {` `}
+                      meters from centre coordinate.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-red-400 rounded-md p-4 pt-6 mt-3 w-full flex items-center justify-center relative">
+                    <IconX
+                      size={20}
+                      className="absolute top-2 right-2 cursor-pointer hover:opacity-70 transition fill-white"
+                      onClick={async () => {
+                        setIsCalculated(false);
+                        setSingleDistance(null);
+                        setCoordinates([]);
+                        await storage.set("isCalculated", false);
+                        await storage.set("singleDistance", `${null}`);
+                      }}
+                    />
+                    <p className="text-white text-sm">
+                      Distance is between these coordinates is approximately{" "}
+                      <span className="font-semibold text-red-800">
+                        {singleDistance}
+                      </span>{" "}
+                      meters.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
-    // <div
-    //   style={{
-    //     width: "600px",
-    //     height: "600px",
-    //     backgroundColor: "gray",
-    //     justifyItems: "center",
-    //     alignItems: "center",
-    //     display: "flex",
-    //   }}
-    // >
-    //   <p style={{
-    //     color: "white", fontSize: "14px", fontWeight: "bold"
-    //   }}>Hello this is my extension</p>
-    // </div>
   );
 };
 
